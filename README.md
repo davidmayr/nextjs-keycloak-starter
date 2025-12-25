@@ -19,7 +19,20 @@ It doesn't leak sensitive information in KeyCloak, so encrypting it is unnecessa
 
 ## Getting Started
 
-First, run the development server:
+First, configure a new client in Keycloak. This project uses the standard authentication flow and does not require Client authentication.
+To make sure the Next.js instance can check the audience, you need to add it to the claim:
+
+Go to Client Scopes -> {client-id}-dedicated -> Add mapper -> By Configuration -> Audience -> Set "Included Client Audience" to contain the client id. Add a name like "self-audience" and keep the defaults.
+
+Set the following env variables:
+```env
+KEYCLOAK_URL=https://<keycloak-host>/realms/<realm>
+KEYCLOAK_CLIENT_ID=<client-id>
+KEYCLOAK_CLIENT_SECRET=<secret>
+PUBLIC_URL=http://localhost:3000
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
