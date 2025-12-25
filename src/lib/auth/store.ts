@@ -33,7 +33,7 @@ const DEFAULT_TOKEN_EXPIRY_BUFFER = 10_000; // 10 seconds
 
 export const useSessionStore = create<SessionState>((set, get) => ({
     user: null,
-    isLoading: false,
+    isLoading: true,
     loadingPromise: null,
 
     token: null,
@@ -41,7 +41,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     updateSession: async () => {
         // If there's an ongoing fetch, wait for it
-        if (get().isLoading) {
+        if (get().loadingPromise) {
             try {
                 await get().loadingPromise;
             } catch {}
