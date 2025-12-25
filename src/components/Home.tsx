@@ -35,6 +35,7 @@ export function HomeComponent({user, token, onLogout}: { user?: User | null, tok
                     center.
                 </p>
 
+                {/* NOTE: Token display is for demonstration purposes only. Remove this in production applications!  */}
                 <p className={"wrap-anywhere"}>Your access token is {token ?? ""}</p>
             </div>
             <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">

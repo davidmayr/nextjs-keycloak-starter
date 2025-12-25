@@ -1,10 +1,8 @@
-import {ReadonlyRequestCookies, ResponseCookies} from "next/dist/server/web/spec-extension/adapters/request-cookies";
-import {RequestCookies, ResponseCookie} from "next/dist/compiled/@edge-runtime/cookies";
+import {ResponseCookie} from "next/dist/compiled/@edge-runtime/cookies";
 import {keycloakClient, verifyToken} from "@/lib/auth/oauth";
 import * as arctic from "arctic";
 import {cookies} from "next/headers";
 import {COOKIE_PREFIX, Cookies} from "@/lib/auth/constants";
-import * as jwt from "jsonwebtoken";
 import {JwtPayload} from "jsonwebtoken";
 
 /**

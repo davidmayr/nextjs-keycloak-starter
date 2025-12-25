@@ -89,13 +89,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             }
         }
 
-        const fetchToken = async (): Promise<Token> => {
+        const fetchToken = async (): Promise<Token | null> => {
             const res = await fetch("/api/auth/token", {
                 method: "POST"
             });
 
             if (!res.ok) {
-                throw new Error(`Token request failed: ${res.status}`);
+                if(res.status == 401) return null
+                console.error("Token fetch failed:", res.status);
+                return null
             }
 
             const { token, expires } = (await res.json()) as { token: string; expires: number };
@@ -117,7 +119,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
                 tokenPromise: null
             });
 
-            return result.token;
+            return result?.token ?? null;
         } catch (err) {
             console.error("Token fetch failed:", err);
             clearSession();

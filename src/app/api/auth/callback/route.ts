@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(process.env.PUBLIC_URL as string)
     } catch (e) {
         if (e instanceof arctic.ArcticFetchError) {
-            console.error("Failed to refresh token due to fetch error:", e);
+            console.error("Failed to get token due to fetch error:", e);
         }
 
         //Invalid login attempt, abort.
