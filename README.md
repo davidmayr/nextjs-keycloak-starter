@@ -36,7 +36,7 @@ To make sure the Next.js instance can check the audience, you need to add it to 
 
 Go to Client Scopes -> {client-id}-dedicated -> Add mapper -> By Configuration -> Audience -> Set "Included Client Audience" to contain the client ID. Add a name like "self-audience" and keep the defaults.
 
-Set the following env variables:
+Set the following env variables (or copy and adjust .env.example):
 ```env
 KEYCLOAK_URL=https://<keycloak-host>/realms/<realm>
 KEYCLOAK_CLIENT_ID=<client-id>
