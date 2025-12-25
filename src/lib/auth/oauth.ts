@@ -22,8 +22,8 @@ export const keycloakClient = new arctic.KeyCloak(
     process.env.PUBLIC_URL as string + "/api/auth/callback"
 );
 
-export const LOGIN_STATE_COOKIE_NAME = COOKIE_PREFIX + "oauth-code-verifier"
-export const CODE_VERIFIER_COOKIE_NAME = COOKIE_PREFIX + "oauth-login-state"
+export const LOGIN_STATE_COOKIE_NAME = COOKIE_PREFIX + "oauth-login-state"
+export const CODE_VERIFIER_COOKIE_NAME = COOKIE_PREFIX + "oauth-code-verifier"
 
 
 export function generateLoginURL() {
@@ -50,13 +50,14 @@ export async function setLoginCookies(data: { state: string; codeVerifier: strin
         value: data.state,
         httpOnly: true,
         secure: process.env.NODE_ENV == "production",
-        path: '/',
+        path: '/api/auth',
         maxAge: 60 * 5 // 5 min
     })
     nextCookies.set({
         name: CODE_VERIFIER_COOKIE_NAME,
         value: data.codeVerifier,
         httpOnly: true,
+        path: '/api/auth',
         secure: process.env.NODE_ENV == "production",
         maxAge: 60 * 5 // 5 min
     })
@@ -75,7 +76,7 @@ export function verifyToken(token: string, options?: VerifyOptions): Promise<str
     return new Promise((resolve, reject) => {
         jwt.verify(token, getKey, {
             ...options,
-            //TODO: Verify audience?
+            audience: process.env.KEYCLOAK_CLIENT_ID
         }, (err, decoded) => {
             if (err) {
                 return reject(err);

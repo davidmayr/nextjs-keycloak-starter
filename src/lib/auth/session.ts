@@ -35,7 +35,7 @@ export interface User {
 
 export function applyUserSessionCookies(cookies: Cookies, accessToken: string, refreshToken: string) {
     const settings: Partial<ResponseCookie> = {
-        sameSite: "lax",
+        sameSite: "strict",
         maxAge: 60 * 60 * 24 * 365,
         secure: process.env.NODE_ENV == "production",
         httpOnly: true,
@@ -105,9 +105,7 @@ export async function logoutServer(cookies: Cookies) {
             await keycloakClient.revokeToken(tokens.refreshToken)
         } catch(e) {
             if (e instanceof arctic.ArcticFetchError) {
-                // Failed to call `fetch()`
-                const cause = e.cause;
-                //TODO: Log this error as this is not a user error (probably)
+                console.error("Failed to refresh token due to fetch error:", e);
             }
         }
     }
@@ -146,12 +144,21 @@ async function getServerSessionFrom(cookies: Cookies, allowRefresh: boolean) {
         const newTokenSet = await keycloakClient.refreshAccessToken(refreshToken)
         applyUserSessionCookies(cookies, newTokenSet.accessToken(), newTokenSet.refreshToken())
 
-        return { token: newTokenSet.accessToken(), user: mapUserFromJWT(jwt.decode(newTokenSet.accessToken()) as JwtPayload), tokenExpires: Math.floor(newTokenSet.accessTokenExpiresAt().getTime() / 1000) }
+        //We need to validate that the new token has e.g. the right audience
+        let token: JwtPayload | undefined
+        try {
+            token = await verifyToken(newTokenSet.accessToken()) as JwtPayload
+        } catch {}
+
+        if(token == null) {
+            clearUserSessionCookies(cookies)
+            return null
+        }
+
+        return { token: newTokenSet.accessToken(), user: mapUserFromJWT(token), tokenExpires: Math.floor(newTokenSet.accessTokenExpiresAt().getTime() / 1000) }
     } catch(e) {
         if (e instanceof arctic.ArcticFetchError) {
-            // Failed to call `fetch()`
-            const cause = e.cause;
-            //TODO: Log this error as this is not a user error (probably)
+            console.error("Failed to refresh token due to fetch error:", e);
         } else {
             clearUserSessionCookies(cookies)
         }

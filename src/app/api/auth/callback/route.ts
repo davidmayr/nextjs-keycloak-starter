@@ -20,8 +20,9 @@ export async function GET(request: NextRequest) {
     nextCookies.delete(CODE_VERIFIER_COOKIE_NAME)
 
     const code = searchParams.get("code")
+    const state = searchParams.get("state")
 
-    if(!code || !loginState || !codeVerifier) {
+    if(!code || !loginState || !codeVerifier || state != loginState) {
         //Invalid login attempt, abort.
         //TODO: Maybe separate error redirect
         return NextResponse.redirect(process.env.PUBLIC_URL as string)
@@ -33,16 +34,12 @@ export async function GET(request: NextRequest) {
         const accessToken = tokens.accessToken();
         const refreshToken = tokens.refreshToken();
 
-        //TODO: Verify state
-
-        await applyUserSessionCookies(nextCookies, accessToken, refreshToken)
+        applyUserSessionCookies(nextCookies, accessToken, refreshToken)
 
         return NextResponse.redirect(process.env.PUBLIC_URL as string)
     } catch (e) {
         if (e instanceof arctic.ArcticFetchError) {
-            // Failed to call `fetch()`
-            const cause = e.cause;
-            //TODO: Log this error as this is not a user error (pro
+            console.error("Failed to refresh token due to fetch error:", e);
         }
 
         //Invalid login attempt, abort.
