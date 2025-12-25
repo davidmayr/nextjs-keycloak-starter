@@ -1,8 +1,9 @@
 import {cookies} from "next/headers";
-import {CODE_VERIFIER_COOKIE_NAME, keycloakClient, LOGIN_STATE_COOKIE_NAME} from "@/lib/auth/oauth";
+import {CODE_VERIFIER_COOKIE_NAME, keycloakClient, LOGIN_STATE_COOKIE_NAME, verifyToken} from "@/lib/auth/oauth";
 import {NextRequest, NextResponse} from "next/server";
 import * as arctic from "arctic";
 import {applyUserSessionCookies} from "@/lib/auth/session";
+import {JwtPayload} from "jsonwebtoken";
 
 /**
  * Handles the incoming callbacks from keycloak. Automatically redirects the user
@@ -33,6 +34,18 @@ export async function GET(request: NextRequest) {
         const tokens = await keycloakClient.validateAuthorizationCode(code, codeVerifier);
         const accessToken = tokens.accessToken();
         const refreshToken = tokens.refreshToken();
+
+        //Even tho we trust keycloak here, we need to validate that the token will be usable in subsequent requests
+        let token: JwtPayload | undefined
+        try {
+            token = await verifyToken(accessToken) as JwtPayload
+        } catch {}
+
+        if(token == null) {
+            //Invalid login attempt, abort.
+            //TODO: Maybe separate error redirect
+            return NextResponse.redirect(process.env.PUBLIC_URL as string)
+        }
 
         applyUserSessionCookies(nextCookies, accessToken, refreshToken)
 

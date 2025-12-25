@@ -51,6 +51,7 @@ export async function setLoginCookies(data: { state: string; codeVerifier: strin
         httpOnly: true,
         secure: process.env.NODE_ENV == "production",
         path: '/api/auth',
+        sameSite: "lax",
         maxAge: 60 * 5 // 5 min
     })
     nextCookies.set({
@@ -58,6 +59,7 @@ export async function setLoginCookies(data: { state: string; codeVerifier: strin
         value: data.codeVerifier,
         httpOnly: true,
         path: '/api/auth',
+        sameSite: "lax",
         secure: process.env.NODE_ENV == "production",
         maxAge: 60 * 5 // 5 min
     })
@@ -76,7 +78,8 @@ export function verifyToken(token: string, options?: VerifyOptions): Promise<str
     return new Promise((resolve, reject) => {
         jwt.verify(token, getKey, {
             ...options,
-            audience: process.env.KEYCLOAK_CLIENT_ID
+            audience: process.env.KEYCLOAK_CLIENT_ID,
+            issuer: process.env.KEYCLOAK_URL
         }, (err, decoded) => {
             if (err) {
                 return reject(err);

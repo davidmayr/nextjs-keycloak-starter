@@ -33,10 +33,11 @@ export interface User {
 
 export function applyUserSessionCookies(cookies: Cookies, accessToken: string, refreshToken: string) {
     const settings: Partial<ResponseCookie> = {
-        sameSite: "strict",
+        sameSite: "lax",
         maxAge: 60 * 60 * 24 * 365,
         secure: process.env.NODE_ENV == "production",
         httpOnly: true,
+        path: "/"
     }
 
     if(SPLIT_COOKIES) {
