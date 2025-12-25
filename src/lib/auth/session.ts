@@ -1,9 +1,9 @@
-import {ReadonlyRequestCookies} from "next/dist/server/web/spec-extension/adapters/request-cookies";
-import {ResponseCookie} from "next/dist/compiled/@edge-runtime/cookies";
+import {ReadonlyRequestCookies, ResponseCookies} from "next/dist/server/web/spec-extension/adapters/request-cookies";
+import {RequestCookies, ResponseCookie} from "next/dist/compiled/@edge-runtime/cookies";
 import {keycloakClient, verifyToken} from "@/lib/auth/oauth";
 import * as arctic from "arctic";
 import {cookies} from "next/headers";
-import {COOKIE_PREFIX} from "@/lib/auth/constants";
+import {COOKIE_PREFIX, Cookies} from "@/lib/auth/constants";
 import * as jwt from "jsonwebtoken";
 import {JwtPayload} from "jsonwebtoken";
 
@@ -21,7 +21,7 @@ const SPLIT_COOKIES = false
  * It should also be noted, that on server components the middleware is the last time we can update the access token during
  * that request. So we need to make sure the access token will be at least valid til the request completes
  */
-const ACCESS_TOKEN_EXPIRY_BUFFER_SECONDS = 20
+export const ACCESS_TOKEN_EXPIRY_BUFFER_SECONDS = 20
 
 export interface User {
     email: string;
@@ -33,7 +33,7 @@ export interface User {
     id: string;
 }
 
-export function applyUserSessionCookies(cookies: ReadonlyRequestCookies, accessToken: string, refreshToken: string) {
+export function applyUserSessionCookies(cookies: Cookies, accessToken: string, refreshToken: string) {
     const settings: Partial<ResponseCookie> = {
         sameSite: "lax",
         maxAge: 60 * 60 * 24 * 365,
@@ -61,7 +61,7 @@ export function applyUserSessionCookies(cookies: ReadonlyRequestCookies, accessT
     }
 }
 
-export function clearUserSessionCookies(cookies: ReadonlyRequestCookies) {
+export function clearUserSessionCookies(cookies: Cookies) {
     if(SPLIT_COOKIES) {
         cookies.delete(COOKIE_PREFIX + "access_token")
         cookies.delete(COOKIE_PREFIX + "refresh_token")
@@ -75,7 +75,7 @@ export function clearUserSessionCookies(cookies: ReadonlyRequestCookies) {
  * Returns the tokenset the user's browser has provided from their cookies. This does not validate
  * the tokens for a valid JWT and doesn't check its signature.
  */
-function getUserSessionUnsafe(cookies: ReadonlyRequestCookies): { refreshToken?: string, accessToken?: string } {
+export function getUserSessionRaw(cookies: Cookies): { refreshToken?: string, accessToken?: string } {
     if(SPLIT_COOKIES) {
         const accessToken = cookies.get(COOKIE_PREFIX + "access_token")?.value
         const refreshToken = cookies.get(COOKIE_PREFIX + "refresh_token")?.value
@@ -95,8 +95,8 @@ function getUserSessionUnsafe(cookies: ReadonlyRequestCookies): { refreshToken?:
     }
 }
 
-export async function logoutServer(cookies: ReadonlyRequestCookies) {
-    const tokens = getUserSessionUnsafe(cookies);
+export async function logoutServer(cookies: Cookies) {
+    const tokens = getUserSessionRaw(cookies);
 
     clearUserSessionCookies(cookies)
 
@@ -113,12 +113,18 @@ export async function logoutServer(cookies: ReadonlyRequestCookies) {
     }
 }
 
+/**
+ * Gets the current session from the request's cookies. If `allowRefresh` is true (default),
+ * the refresh token will be used to get a new access token if the current one is expired or about to expire.
+ *
+ * allowRefresh must be disabled in all react server components, can however be enabled in server actions and routes.
+ */
 export async function getServerSession(allowRefresh?: boolean) {
     return await getServerSessionFrom(await cookies(), allowRefresh ?? true)
 }
 
-async function getServerSessionFrom(cookies: ReadonlyRequestCookies, allowRefresh: boolean) {
-    const {accessToken, refreshToken} = getUserSessionUnsafe(cookies)
+async function getServerSessionFrom(cookies: Cookies, allowRefresh: boolean) {
+    const {accessToken, refreshToken} = getUserSessionRaw(cookies)
     allowRefresh = allowRefresh && refreshToken != null
 
     if(accessToken != null) {
@@ -128,9 +134,8 @@ async function getServerSessionFrom(cookies: ReadonlyRequestCookies, allowRefres
         } catch {}
 
 
-        const clockTimestamp = Math.floor(Date.now() / 1000);
 
-        if(token != null && (!allowRefresh || typeof token["exp"] !== "number" || clockTimestamp+ACCESS_TOKEN_EXPIRY_BUFFER_SECONDS <= token["exp"])) {
+        if(token != null && (!allowRefresh || !isTokenAboutToExpireWithin(token, ACCESS_TOKEN_EXPIRY_BUFFER_SECONDS))) {
             return { token: accessToken, user: mapUserFromJWT(token), tokenExpires: token["exp"] }
         }
     }
@@ -152,6 +157,12 @@ async function getServerSessionFrom(cookies: ReadonlyRequestCookies, allowRefres
         }
     }
     return null
+}
+
+export function isTokenAboutToExpireWithin(payload: JwtPayload, buffer?: number) {
+    const clockTimestamp = Math.floor(Date.now() / 1000);
+
+    return payload.exp != null && clockTimestamp+(buffer ?? ACCESS_TOKEN_EXPIRY_BUFFER_SECONDS) > payload.exp
 }
 
 function mapUserFromJWT(token: JwtPayload): User {

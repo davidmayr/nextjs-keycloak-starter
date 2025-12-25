@@ -3,6 +3,8 @@ import {COOKIE_PREFIX} from "@/lib/auth/constants";
 import jwksClient from "jwks-rsa";
 import * as jwt from "jsonwebtoken";
 import {Jwt, JwtHeader, JwtPayload, SigningKeyCallback, VerifyOptions} from "jsonwebtoken";
+import {NextResponse} from "next/server";
+import {cookies} from "next/headers";
 
 export const keycloakJWKClient = jwksClient({
     jwksUri: `${process.env.KEYCLOAK_URL as string}/protocol/openid-connect/certs`,
@@ -33,6 +35,33 @@ export function generateLoginURL() {
 
     return { url: authorizationURL, state, codeVerifier };
 }
+
+
+export function generateUpdateRequiredActionLoginURL(action: string) {
+    const login = generateLoginURL()
+
+    return { ...login, url: login.url + "&kc_action=" + encodeURIComponent(action) }
+}
+
+export async function setLoginCookies(data: { state: string; codeVerifier: string }) {
+    const nextCookies = await cookies();
+    nextCookies.set({
+        name: LOGIN_STATE_COOKIE_NAME,
+        value: data.state,
+        httpOnly: true,
+        secure: process.env.NODE_ENV == "production",
+        path: '/',
+        maxAge: 60 * 5 // 5 min
+    })
+    nextCookies.set({
+        name: CODE_VERIFIER_COOKIE_NAME,
+        value: data.codeVerifier,
+        httpOnly: true,
+        secure: process.env.NODE_ENV == "production",
+        maxAge: 60 * 5 // 5 min
+    })
+}
+
 
 function getKey(header: JwtHeader, callback: SigningKeyCallback){
     keycloakJWKClient.getSigningKey(header.kid, function(err, key) {
